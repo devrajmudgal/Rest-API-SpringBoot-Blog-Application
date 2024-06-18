@@ -2,11 +2,13 @@ package com.example.blogApplication.service.impl;
 
 import com.example.blogApplication.entity.Comment;
 import com.example.blogApplication.entity.Post;
+import com.example.blogApplication.exception.BlogAPIException;
 import com.example.blogApplication.exception.ResourceNotFoundException;
 import com.example.blogApplication.payload.CommentDto;
 import com.example.blogApplication.repository.CommentRepository;
 import com.example.blogApplication.repository.PostRepository;
 import com.example.blogApplication.service.CommentService;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -44,6 +46,46 @@ public class CommentServiceImpl implements CommentService {
 
         List<Comment> comments = commentRepository.findByPostId(post_Id);
         return comments.stream().map(com ->commentToCommentDto(com)).collect(Collectors.toList());
+    }
+
+    @Override
+    public CommentDto getCommentById(Long post_id, Long comment_id) {
+        Post post = postRepository.findById(post_id).orElseThrow(()->new ResourceNotFoundException("Post","Post_Id",post_id));
+
+        Comment comment = commentRepository.findById(comment_id).orElseThrow(()->new ResourceNotFoundException("Comment","Comment_Id",comment_id));
+
+        if(!comment.getPost().getId().equals(post.getId())){
+            throw new BlogAPIException("Comment does not belong to the post",HttpStatus.BAD_REQUEST);
+        }
+
+        return commentToCommentDto(comment);
+    }
+
+    @Override
+    public CommentDto updateCommentById(Long postId, Long commentId,CommentDto commentDto) {
+        Post post = postRepository.findById(postId).orElseThrow(()->new ResourceNotFoundException("Post","PostId",postId));
+        Comment comment = commentRepository.findById(commentId).orElseThrow(()->new ResourceNotFoundException("Comment","CommentId",commentId));
+        if(!comment.getPost().getId().equals(post.getId())){
+            throw new BlogAPIException("Comment Not Found for particular Post",HttpStatus.BAD_REQUEST);
+        }
+
+        if(commentDto.getName()!=null){
+            comment.setName(commentDto.getName());
+        }
+        if(commentDto.getEmail()!=null){
+            comment.setEmail(commentDto.getEmail());
+        }
+        if(commentDto.getBody()!=null){
+            comment.setBody(commentDto.getBody());
+        }
+
+
+        Comment commentResponse = commentRepository.save(comment);
+
+        return commentToCommentDto(commentResponse);
+
+
+
     }
 
     private CommentDto commentToCommentDto(Comment comment){
